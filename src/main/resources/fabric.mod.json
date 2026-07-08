@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "baritone",
+  "version": "${version}",
+  "name": "Baritone Fabric MVP",
+  "description": "A Fabric 1.21.1 pathfinding automation MVP with # commands, A* navigation, HUD and config.",
+  "authors": ["yourname"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/baritone/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.yourname.baritone.BaritoneMod"
+    ]
+  },
+  "mixins": [
+    "baritone.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "cloth-config": "*"
+  }
+}
