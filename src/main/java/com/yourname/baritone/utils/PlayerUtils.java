@@ -6,6 +6,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
 
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.Optional;
 
 public final class PlayerUtils {
@@ -13,23 +14,33 @@ public final class PlayerUtils {
     }
 
     public static Optional<PlayerEntity> findPlayer(MinecraftClient client, String name) {
-        if (client.world == null || client.player == null) {
+        if (client.world == null || client.player == null || name == null || name.isBlank()) {
             return Optional.empty();
         }
+
         return client.world.getPlayers().stream()
                 .filter(player -> player != client.player)
                 .filter(player -> player.getGameProfile().getName().equalsIgnoreCase(name))
-                .findFirst();
+                .findFirst()
+                .map(player -> (PlayerEntity) player);
     }
 
     public static Optional<Entity> findNearestEntity(MinecraftClient client, String entityName, double radius) {
-        if (client.world == null || client.player == null) {
+        if (client.world == null || client.player == null || entityName == null || entityName.isBlank()) {
             return Optional.empty();
         }
+
+        String query = entityName.toLowerCase(Locale.ROOT);
         Box box = client.player.getBoundingBox().expand(radius);
-        return client.world.getOtherEntities(client.player, box, entity ->
-                        entity.getType().getName().getString().equalsIgnoreCase(entityName)
-                                || entity.getType().toString().toLowerCase().contains(entityName.toLowerCase()))
+
+        return client.world.getOtherEntities(client.player, box, entity -> {
+                    String displayName = entity.getType().getName().getString().toLowerCase(Locale.ROOT);
+                    String typeName = entity.getType().toString().toLowerCase(Locale.ROOT);
+
+                    return displayName.equals(query)
+                            || displayName.contains(query)
+                            || typeName.contains(query);
+                })
                 .stream()
                 .min(Comparator.comparingDouble(entity -> entity.squaredDistanceTo(client.player)));
     }
