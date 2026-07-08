@@ -1,0 +1,9 @@
+package ru.freakdev.minibaritone.task;
+
+import net.minecraft.client.MinecraftClient;
+
+public interface Task {
+    void tick(MinecraftClient client);
+    void stop(MinecraftClient client);
+    boolean isFinished();
+}

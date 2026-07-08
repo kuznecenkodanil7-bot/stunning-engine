@@ -1,0 +1,145 @@
+package ru.freakdev.minibaritone.path;
+
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+
+import java.util.*;
+
+public final class PathFinder {
+    private final ClientWorld world;
+
+    public PathFinder(ClientWorld world) {
+        this.world = world;
+    }
+
+    public List<BlockPos> findPath(BlockPos start, BlockPos goal, int maxIterations) {
+        BlockPos cleanStart = normalizeStart(start);
+        BlockPos cleanGoal = normalizeGoal(goal);
+
+        if (!canStandAt(world, cleanStart) || !canStandAt(world, cleanGoal)) return List.of();
+
+        PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(Node::fScore));
+        Map<BlockPos, Node> all = new HashMap<>();
+        Set<BlockPos> closed = new HashSet<>();
+
+        Node startNode = new Node(cleanStart, null, 0.0, heuristic(cleanStart, cleanGoal));
+        open.add(startNode);
+        all.put(cleanStart, startNode);
+
+        int iterations = 0;
+        while (!open.isEmpty() && iterations++ < maxIterations) {
+            Node current = open.poll();
+            if (!closed.add(current.pos)) continue;
+
+            if (current.pos.equals(cleanGoal) || horizontalDistance(current.pos, cleanGoal) <= 1.0 && Math.abs(current.pos.getY() - cleanGoal.getY()) <= 1) {
+                return reconstruct(current);
+            }
+
+            for (BlockPos neighbor : neighbors(current.pos)) {
+                if (closed.contains(neighbor)) continue;
+
+                double newCost = current.gCost + movementCost(current.pos, neighbor);
+                Node old = all.get(neighbor);
+                if (old == null || newCost < old.gCost) {
+                    Node next = new Node(neighbor, current, newCost, heuristic(neighbor, cleanGoal));
+                    all.put(neighbor, next);
+                    open.add(next);
+                }
+            }
+        }
+
+        return List.of();
+    }
+
+    private BlockPos normalizeStart(BlockPos start) {
+        if (canStandAt(world, start)) return start.toImmutable();
+        for (int dy = 1; dy <= 3; dy++) if (canStandAt(world, start.up(dy))) return start.up(dy).toImmutable();
+        for (int dy = 1; dy <= 5; dy++) if (canStandAt(world, start.down(dy))) return start.down(dy).toImmutable();
+        return start.toImmutable();
+    }
+
+    private BlockPos normalizeGoal(BlockPos goal) {
+        if (canStandAt(world, goal)) return goal.toImmutable();
+        if (canStandAt(world, goal.up())) return goal.up().toImmutable();
+        for (int dy = 1; dy <= 5; dy++) if (canStandAt(world, goal.down(dy))) return goal.down(dy).toImmutable();
+        return goal.toImmutable();
+    }
+
+    private List<BlockPos> neighbors(BlockPos pos) {
+        List<BlockPos> result = new ArrayList<>(16);
+
+        for (Direction dir : Direction.Type.HORIZONTAL) {
+            BlockPos base = pos.offset(dir);
+
+            if (canStandAt(world, base)) {
+                result.add(base.toImmutable());
+                continue;
+            }
+
+            BlockPos up = base.up();
+            if (canStandAt(world, up) && isPassable(world, pos.up(2))) {
+                result.add(up.toImmutable());
+                continue;
+            }
+
+            for (int drop = 1; drop <= 4; drop++) {
+                BlockPos down = base.down(drop);
+                if (canStandAt(world, down)) {
+                    result.add(down.toImmutable());
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public static boolean canStandAt(ClientWorld world, BlockPos feet) {
+        return isPassable(world, feet)
+            && isPassable(world, feet.up())
+            && isSolid(world, feet.down());
+    }
+
+    private static boolean isPassable(ClientWorld world, BlockPos pos) {
+        return world.getBlockState(pos).getCollisionShape(world, pos).isEmpty();
+    }
+
+    private static boolean isSolid(ClientWorld world, BlockPos pos) {
+        return !world.getBlockState(pos).getCollisionShape(world, pos).isEmpty();
+    }
+
+    private static double movementCost(BlockPos from, BlockPos to) {
+        double cost = from.getSquaredDistance(to);
+        if (to.getY() > from.getY()) cost += 1.5;
+        if (to.getY() < from.getY()) cost += 0.2;
+        return cost;
+    }
+
+    private static double heuristic(BlockPos a, BlockPos b) {
+        return Math.abs(a.getX() - b.getX()) + Math.abs(a.getY() - b.getY()) * 1.5 + Math.abs(a.getZ() - b.getZ());
+    }
+
+    private static double horizontalDistance(BlockPos a, BlockPos b) {
+        double dx = a.getX() - b.getX();
+        double dz = a.getZ() - b.getZ();
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    private static List<BlockPos> reconstruct(Node node) {
+        LinkedList<BlockPos> path = new LinkedList<>();
+        Node current = node;
+        while (current != null) {
+            path.addFirst(current.pos);
+            current = current.parent;
+        }
+        if (!path.isEmpty()) path.removeFirst();
+        return path;
+    }
+
+    private record Node(BlockPos pos, Node parent, double gCost, double hCost) {
+        double fScore() {
+            return gCost + hCost;
+        }
+    }
+}
