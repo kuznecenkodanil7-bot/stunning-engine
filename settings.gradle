@@ -9,20 +9,4 @@ pluginManagement {
     }
 }
 
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-
-    repositories {
-        maven {
-            name = "Fabric"
-            url = "https://maven.fabricmc.net/"
-        }
-        maven {
-            name = "Shedaniel"
-            url = "https://maven.shedaniel.me/"
-        }
-        mavenCentral()
-    }
-}
-
 rootProject.name = "baritone-1.21.1"
